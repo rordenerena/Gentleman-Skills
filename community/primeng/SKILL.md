@@ -1,22 +1,29 @@
 ---
-name: angular-primeng
-description: Best practices for Angular 21 + PrimeNG enterprise application development. Suitable for enterprise-grade applications such as MES and ERP. Covers component design, state management, performance optimization, and PrimeNG component usage conventions.
-source: custom
-updated: 2025-01-16
+name: primeng
+description: >
+  PrimeNG +19 patterns for Angular +19 enterprise applications with standalone bootstrapping,
+  Signals state management, reactive forms, data tables, drawers, and service-layer
+  conventions.
+  Trigger: When building Angular apps with PrimeNG, configuring PrimeNG providers and
+  themes, or generating data-heavy admin, MES, and ERP interfaces.
+license: Apache-2.0
+metadata:
+  author: seikaikyo
+  contributor: rordenerena
+  version: "1.0"
 ---
 
-# Angular 21 + PrimeNG Development Guidelines
+## When to Use
 
-## Applicable Scenarios
+Load this skill when:
+- Building Angular +19 applications with PrimeNG +19
+- Configuring `providePrimeNG`, themes, ripple, or CSS layer ordering
+- Implementing admin, MES, ERP, or other data-heavy business screens
+- Generating PrimeNG forms, tables, drawers, tags, toasts, and loading states
 
-- MES Manufacturing Execution Systems
-- ERP Enterprise Resource Planning
-- Admin management systems
-- Data-intensive applications
+## Critical Patterns
 
-## Core Principles
-
-### 1. Project Structure
+### Pattern 1: Project Structure
 
 ```text
 src/app/
@@ -38,7 +45,7 @@ src/app/
 └── layout/                 # Layouts
 ```
 
-### 2. PrimeNG Configuration (`app.config.ts`)
+### Pattern 2: PrimeNG Configuration (`app.config.ts`)
 
 ```typescript
 import { ApplicationConfig } from '@angular/core';
@@ -66,7 +73,7 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-### 3. PrimeNG Component Reference
+### Pattern 3: PrimeNG Component Reference
 
 | Purpose | Component | Example |
 |------|------|------|
@@ -81,7 +88,7 @@ export const appConfig: ApplicationConfig = {
 | Toast notifications | `<p-toast>` | Action feedback |
 | Loading overlay | `<p-blockui>` | Asynchronous operations |
 
-### 4. Signals State Management (Angular 21)
+### Pattern 4: Signals State Management (Angular 19)
 
 ```typescript
 // Recommended: use Signals
@@ -112,7 +119,7 @@ export class WorkOrderListComponent {
 }
 ```
 
-### 5. Service Layer Design
+### Pattern 5: Service Layer Design
 
 ```typescript
 @Injectable({ providedIn: 'root' })
@@ -148,7 +155,7 @@ export class WorkOrderService {
 }
 ```
 
-### 6. API Response Format
+### Pattern 6: API Response Format
 
 ```typescript
 // Unified response format
@@ -171,7 +178,7 @@ interface PaginatedResponse<T> extends ApiResponse<T[]> {
 }
 ```
 
-### 7. Form Handling
+### Pattern 7: Form Handling
 
 ```typescript
 // Recommended: Reactive Forms + PrimeNG
@@ -223,7 +230,7 @@ export class WorkOrderFormComponent {
 }
 ```
 
-### 8. Table Best Practices
+### Pattern 8: Table Best Practices
 
 ```typescript
 @Component({
@@ -284,7 +291,7 @@ export class WorkOrderTableComponent {
 }
 ```
 
-### 9. Drawer Sidebar Pattern
+### Pattern 9: Drawer Sidebar Pattern
 
 ```typescript
 @Component({
@@ -322,7 +329,7 @@ export class WorkOrderListComponent {
 }
 ```
 
-### 10. Error Handling
+### Pattern 10: Error Handling
 
 ```typescript
 // HTTP interceptor
@@ -360,12 +367,223 @@ export class ErrorInterceptor implements HttpInterceptor {
 }
 ```
 
-## Prohibited Practices
+## Code Examples
 
-1. **No fallback mock data** - If the API fails, show an error and do not use fake data.
-2. **No emoji** - Do not use emoji in code, comments, or UI.
-3. **No Simplified Chinese** - When Chinese text is needed, use Traditional Chinese (Taiwan terminology).
-4. **No single file over 500 lines** - Split files when they exceed this limit.
+### Example 1: Standalone list filter with Signals
+
+```typescript
+import { Component, computed, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { InputTextModule } from 'primeng/inputtext';
+import { TableModule } from 'primeng/table';
+
+interface WorkOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+}
+
+@Component({
+  selector: 'app-work-order-search',
+  standalone: true,
+  imports: [FormsModule, InputTextModule, TableModule],
+  template: `
+    <input
+      pInputText
+      [ngModel]="query()"
+      (ngModelChange)="query.set($event)"
+      placeholder="Search work orders"
+    />
+
+    <p-table [value]="filteredOrders()" [paginator]="true" [rows]="10">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Order</th>
+          <th>Customer</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-order>
+        <tr>
+          <td>{{ order.orderNumber }}</td>
+          <td>{{ order.customerName }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  `
+})
+export class WorkOrderSearchComponent {
+  query = signal('');
+  orders = signal<WorkOrder[]>([]);
+
+  filteredOrders = computed(() => {
+    const term = this.query().trim().toLowerCase();
+
+    if (!term) {
+      return this.orders();
+    }
+
+    return this.orders().filter(order =>
+      order.orderNumber.toLowerCase().includes(term) ||
+      order.customerName.toLowerCase().includes(term)
+    );
+  });
+}
+```
+
+### Example 2: Reactive form dialog action
+
+```typescript
+import { Component, inject, signal } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { finalize } from 'rxjs';
+import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
+
+@Component({
+  selector: 'app-customer-dialog',
+  standalone: true,
+  imports: [ReactiveFormsModule, ButtonModule, DialogModule, InputTextModule],
+  template: `
+    <p-dialog [(visible)]="visible" header="New customer" [modal]="true">
+      <form [formGroup]="form" class="flex flex-col gap-3" (ngSubmit)="save()">
+        <input pInputText formControlName="name" placeholder="Customer name" />
+        <input pInputText formControlName="email" placeholder="Email" />
+        <p-button type="submit" label="Save" [loading]="saving()" [disabled]="form.invalid" />
+      </form>
+    </p-dialog>
+  `
+})
+export class CustomerDialogComponent {
+  private readonly customerService = inject(CustomerService);
+
+  visible = false;
+  saving = signal(false);
+
+  form = new FormGroup({
+    name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    email: new FormControl('', { nonNullable: true, validators: [Validators.email] })
+  });
+
+  save() {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    this.saving.set(true);
+
+    this.customerService.create(this.form.getRawValue())
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe(() => {
+        this.visible = false;
+        this.form.reset({ name: '', email: '' });
+      });
+  }
+}
+```
+
+### Example 3: Toast-backed delete confirmation flow
+
+```typescript
+import { Component, inject } from '@angular/core';
+import { ButtonModule } from 'primeng/button';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService, MessageService } from 'primeng/api';
+
+@Component({
+  selector: 'app-delete-action',
+  standalone: true,
+  imports: [ButtonModule, ConfirmDialogModule],
+  providers: [ConfirmationService],
+  template: `
+    <p-confirmdialog />
+    <p-button label="Delete" severity="danger" (click)="confirmDelete('WO-1001')" />
+  `
+})
+export class DeleteActionComponent {
+  private readonly confirmationService = inject(ConfirmationService);
+  private readonly messageService = inject(MessageService);
+  private readonly workOrderService = inject(WorkOrderService);
+
+  confirmDelete(id: string) {
+    this.confirmationService.confirm({
+      header: 'Delete work order',
+      message: 'This action cannot be undone.',
+      accept: () => {
+        this.workOrderService.delete(id).subscribe(() => {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Deleted',
+            detail: `Work order ${id} was removed`
+          });
+        });
+      }
+    });
+  }
+}
+```
+
+## Anti-Patterns
+
+### Don't: Mix template-driven and reactive forms on the same flow
+
+This makes validation and state transitions harder to reason about.
+
+```typescript
+// Bad example
+form = new FormGroup({
+  status: new FormControl('pending')
+});
+
+template = `
+  <input pInputText [(ngModel)]="query" formControlName="status" />
+`;
+```
+
+### Don't: Hide production API failures with fallback mock data
+
+Business screens should surface the failure and preserve traceability.
+
+```typescript
+// Bad example
+this.workOrderService.getList().subscribe({
+  next: response => this.workOrders.set(response.data ?? []),
+  error: () => this.workOrders.set([{ id: 'demo', orderNumber: 'MOCK-001' } as WorkOrder])
+});
+```
+
+### Don't: Render large PrimeNG tables without explicit loading and scaling strategy
+
+Large datasets need pagination, lazy loading, or virtual scrolling.
+
+```html
+<!-- Bad example -->
+<p-table [value]="workOrders()">
+  <ng-template pTemplate="body" let-order>
+    <tr>
+      <td>{{ order.orderNumber }}</td>
+      <td>{{ order.customerName }}</td>
+    </tr>
+  </ng-template>
+</p-table>
+```
+
+### Don't: Put HTTP orchestration directly inside reusable presentation components
+
+Keep API calls in a service or container-level component so PrimeNG widgets stay focused on UI state.
+
+```typescript
+// Bad example
+@Component({...})
+export class WorkOrderTableComponent {
+  constructor(private http: HttpClient) {}
+
+  ngOnInit() {
+    this.http.get('/api/work-orders').subscribe();
+  }
+}
+```
 
 ## Performance Optimization
 
@@ -374,7 +592,13 @@ export class ErrorInterceptor implements HttpInterceptor {
 3. **Lazy loading** - Feature modules should be lazy-loaded.
 4. **Virtual scrolling** - Use `<p-scroller>` for large datasets.
 
-## Reference Resources
+## Commands
+
+```bash
+npm install primeng @primeng/themes primeicons @angular/cdk
+```
+
+## Resources
 
 - [Angular Style Guide](https://angular.dev/style-guide)
 - [PrimeNG Documentation](https://primeng.org/)
