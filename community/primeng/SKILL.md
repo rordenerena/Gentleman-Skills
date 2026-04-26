@@ -367,6 +367,10 @@ export class ErrorInterceptor implements HttpInterceptor {
 }
 ```
 
+### Pattern 11: Mutable arrays
+
+Dont use readonly arrays for bindings that PrimeNG set as mutables
+
 ## Code Examples
 
 ### Example 1: Standalone list filter with Signals
